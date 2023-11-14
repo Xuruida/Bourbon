@@ -9,3 +9,7 @@ cmake-*
 # Build directory.
 build/
 out/
+
+# Evaluations
+evaluation-xrd/
+evaluation/

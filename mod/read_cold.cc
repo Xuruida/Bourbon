@@ -418,7 +418,8 @@ int main(int argc, char *argv[]) {
                     uint64_t index = use_distribution ? distribution[i] : uniform_dist_file2(e2) % (keys.size() - 1);
                     const string& key = keys[index];
                     instance->StartTimer(4);
-                    if (insert_bound != 0 && index > insert_bound) {
+                    // if (insert_bound != 0 && index > insert_bound) {
+                    if (insert_bound != 0 && index >= insert_bound) {
                         // read inserted key
                         status = db->Get(read_options, generate_key(to_string(10000000000 + index)), &value);
                     } else {

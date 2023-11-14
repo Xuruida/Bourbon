@@ -42,7 +42,9 @@ namespace adgMod {
 
     int file_allowed_seek = 10;
     int level_allowed_seek = 1;
-    float reference_frequency = 2.6;
+
+    // 2023-04 XRD: Changed freq from 2.6 to 2.1
+    float reference_frequency = 2.1;
     bool block_num_entries_recorded = false;
     bool level_learning_enabled = false;
     bool file_learning_enabled = true;
