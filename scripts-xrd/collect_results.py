@@ -8,6 +8,72 @@ ROOT = basedir + "/Bourbon/evaluation-xrd"
 LAT_FCTR = 10000*1000*1000
 OPS_FCTR = 10000*1000*1000*1000
 
+ycsb_dir = "/home/kvgroup/xrd/learned_index/bourbon/dataset/ycsb"
+
+workload = "r0.5_w0.5"
+linenum = "20232277"
+opnum = "20000000"
+distribution = "zipfian"
+
+def parse_kv(s: str, key: str):
+    if s.find(key) != -1:
+        t = s.split("=")
+        t[0], t[1] = t[0].strip(), t[1].strip()
+        print("Parsed: ", t[0], t[1])
+        return t[1]
+    return None
+
+def parse_workload():
+    f = open(join(ycsb_dir, "workloads", "myWorkload.wl"), "r")
+
+    global workload
+    global linenum
+    global opnum
+    global distribution
+
+    read_p = ""
+    update_p = ""
+    scan_p = ""
+    insert_p = ""
+
+    for line in f:
+        line = line.strip()
+        if len(line) == 0 or line[0] == '#':
+            continue
+        ln = parse_kv(line, "recordcount")
+        if ln is not None:
+            linenum = ln
+
+        opn = parse_kv(line, "operationcount")
+        if opn is not None:
+            opnum = opn
+        
+        dis = parse_kv(line, "requestdistribution")
+        if dis is not None:
+            distribution = dis
+        
+        r_p = parse_kv(line, "readproportion")
+        if r_p is not None:
+            read_p = r_p
+        
+        u_p = parse_kv(line, "updateproportion")
+        if u_p is not None:
+            update_p = u_p
+
+        s_p = parse_kv(line, "scanproportion")
+        if s_p is not None:
+            scan_p = s_p
+        
+        i_p = parse_kv(line, "insertproportion")
+        if i_p is not None:
+            insert_p = i_p
+
+    opnum = int(opnum)
+    linenum = int(linenum)
+    workload = "r{}_w{}".format(read_p, update_p)
+    print(read_p, update_p, scan_p, insert_p)
+    print(workload, distribution, linenum, opnum)
+
 def read_file(filename):
     lines = []
     with open(filename, 'r') as f:
@@ -58,9 +124,12 @@ def req_dist():
         for dat in datasets:
             base = read_file(join(ROOT, "{}_baseline_{}.txt".format(dat, dist)))
             llsm = read_file(join(ROOT, "{}_llsm_{}.txt".format(dat, dist)))
-            print("{} baseline under {} latency: {:.2f} microseconds".format(dat, dist, base/LAT_FCTR))
-            print("{} llsm under {} latency: {:.2f} microseconds".format(dat, dist, llsm/LAT_FCTR))
-            print("baseline / llsm = {:.2f}".format(base / llsm))
+            hal = read_file(join(ROOT, "{}_hal_{}.txt".format(dat, dist)))
+            print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+            print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+            print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
+            print("baseline / llsm = {:.5f}".format(base / llsm))
+            print("llsm / hal = {:.5f}".format(llsm / hal))
             print("")
 
 
@@ -98,6 +167,7 @@ def sosd():
 def main():
     if len(sys.argv) != 2:
         print("Usage: prog expr_num \\in [1-5]")
+    parse_workload()
     expr = int(sys.argv[1])
     if expr == 1:
         dataset()

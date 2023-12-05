@@ -156,6 +156,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       version_count(0) {
         adgMod::db = this;
         vlog = new adgMod::VLog(dbname_ + "/vlog.txt");
+        entry_cache = new hal::EntryCache(hal::kEntryCacheSize, this, vlog);
       }
 
 DBImpl::~DBImpl() {
@@ -1291,6 +1292,13 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
     snapshot = versions_->LastSequence();
   }
 
+  if (hal::mode & hal::HalModeMask::kHalEntryCacheEnabled) {
+    bool found = entry_cache->Lookup(key, value);
+    if (found) {
+      return s;
+    }
+  }
+
   MemTable* mem = mem_;
   MemTable* imm = imm_;
   Version* current = versions_->current();
@@ -1342,6 +1350,10 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
       uint64_t value_address = DecodeFixed64(value->c_str());
       uint32_t value_size = DecodeFixed32(value->c_str() + sizeof(uint64_t));
       *value = std::move(vlog->ReadRecord(value_address, value_size));
+
+      if (hal::mode & hal::HalModeMask::kHalEntryCacheEnabled) {
+        entry_cache->Insert(key, value_address, value);
+      }
 #ifdef INTERNAL_TIMER
       instance->PauseTimer(12);
 #endif
@@ -1392,6 +1404,11 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
   if (adgMod::MOD >= 7) {
     uint64_t value_address = adgMod::db->vlog->AddRecord(key, val);
+    if (hal::mode & hal::HalModeMask::kHalEntryCacheEnabled) {
+      bool success = entry_cache->TryInsert(key, value_address, val);
+      if (success)
+        return Status::OK();
+    }
     char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
     EncodeFixed64(buffer, value_address);
     EncodeFixed32(buffer + sizeof(uint64_t), val.size());

@@ -155,6 +155,8 @@ class InternalKey {
   void Clear() { rep_.clear(); }
 
   std::string DebugString() const;
+
+  friend class std::hash<InternalKey>;
 };
 
 inline int InternalKeyComparator::Compare(const InternalKey& a,

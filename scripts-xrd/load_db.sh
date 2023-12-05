@@ -25,20 +25,13 @@ if [[ "$1" == "osm" ]]; then
     datasetDir=${basedir}/dataset/ycsb
     linenum=$(eval echo $(awk -F'=' '{ if($1~/^recordcount/) print $2}' ${datasetDir}/workloads/myWorkload.wl))
 
-    trace_linenum=500000
+    trace_linenum=$linenum
     echo "write osm ${linenum}"
-    ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}-lat-nodup.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum} -m 7 -w > ${eval_log_dir}/osm_${linenum}_put.txt
+    ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum} -m 7 -w > ${eval_log_dir}/osm_${linenum}_put.txt
     echo "finish write osm ${linenum}"
     echo "write osm ${linenum} random"
-    ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}-lat-nodup.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum}-random -m 7 -w -l 3 > ${eval_log_dir}/osm_${linenum}_random_put.txt
+    ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum}-random -m 7 -w -l 3 > ${eval_log_dir}/osm_${linenum}_random_put.txt
     echo "finish write osm ${linenum} random"
-
-    echo "copy random database to llsm/baseline"
-    rm -rf ${database_dir}/testdb-llsm-osm-${linenum}-random
-    rm -rf ${database_dir}/testdb-baseline-osm-${linenum}-random
-    cp -r ${database_dir}/testdb-osm-${linenum}-random ${database_dir}/testdb-llsm-osm-${linenum}-random
-    cp -r ${database_dir}/testdb-osm-${linenum}-random ${database_dir}/testdb-baseline-osm-${linenum}-random
-    
 
 elif [[ "$1" == "ycsb" ]]; then
     echo "ycsb"

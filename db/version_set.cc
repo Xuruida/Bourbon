@@ -23,6 +23,8 @@
 #include "mod/stats.h"
 #include "mod/learned_index.h"
 
+#include "mod/hal/Hal.h"
+
 namespace leveldb {
 
     static size_t TargetFileSize(const Options *options) {
@@ -536,6 +538,16 @@ namespace leveldb {
                           adgMod::file_stats_mutex.Unlock();
                         }
 #endif
+
+                        // Hal: record hotness-info
+                        if (hal::mode & hal::HalModeMask::kHalEnabled) {
+                            if (f->sstHotStats == nullptr) {
+                                f->sstHotStats = std::make_shared<hal::SSTHotStats>();
+                            }
+                            InternalKey ik;
+                            ik.DecodeFrom(ikey);
+                            f->sstHotStats->add(ik);
+                        }
                         return s;
                     }
                     case kDeleted:
@@ -1435,18 +1447,62 @@ namespace leveldb {
             assert(level + 1 < config::kNumLevels);
             c = new Compaction(options_, level);
 
-            // Pick the first file that comes after compact_pointer_[level]
-            for (size_t i = 0; i < current_->files_[level].size(); i++) {
-                FileMetaData *f = current_->files_[level][i];
-                if (compact_pointer_[level].empty() ||
-                    icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
-                    c->inputs_[0].push_back(f);
-                    break;
+            // Hal: debug output hotness information
+            // level 0 overlap keys... useless
+            if (level > 0 && (hal::mode & hal::HalModeMask::kHalEnabled) && (hal::mode & hal::HalModeMask::kHalCompactionEnabled)) {
+                // std::cout << "===== Picking level " << level << std::endl;
+                int hal_compact_file_idx = -1;
+                double min_score = std::numeric_limits<double>::max();
+
+                // circular find from a random file
+                size_t start_idx = rand() % current_->files_[level].size();
+                for (size_t i = start_idx; i < current_->files_[level].size(); i++) {
+                    FileMetaData *f = current_->files_[level][i];
+                    if (f->sstHotStats == nullptr) {
+                        min_score = 0;
+                        hal_compact_file_idx = i;
+                        break;
+                    }
+                    
+                    double score = f->sstHotStats->getScore();
+                    if (score < min_score) {
+                        hal_compact_file_idx = i;
+                        min_score = score;
+                    }
+                    // std::cout << "File: " << i << " " << f->sstHotStats->getScore() << std::endl;
                 }
-            }
-            if (c->inputs_[0].empty()) {
-                // Wrap-around to the beginning of the key space
-                c->inputs_[0].push_back(current_->files_[level][0]);
+
+                if (min_score > 0) {
+                    for (size_t i = 0; i < start_idx; i++) {
+                        FileMetaData *f = current_->files_[level][i];
+                        if (f->sstHotStats == nullptr) {
+                            min_score = 0;
+                            hal_compact_file_idx = i;
+                            break;
+                        }
+                        
+                        double score = f->sstHotStats->getScore();
+                        if (score < min_score) {
+                            hal_compact_file_idx = i;
+                            min_score = score;
+                        }
+                    }
+                }
+                c->inputs_[0].push_back(current_->files_[level][hal_compact_file_idx]);
+            } else {
+                // Pick the first file that comes after compact_pointer_[level]
+                for (size_t i = 0; i < current_->files_[level].size(); i++) {
+                    FileMetaData *f = current_->files_[level][i];
+                    if (compact_pointer_[level].empty() ||
+                        icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
+                        c->inputs_[0].push_back(f);
+                        break;
+                    }
+                }
+                if (c->inputs_[0].empty()) {
+                    // Wrap-around to the beginning of the key space
+                    c->inputs_[0].push_back(current_->files_[level][0]);
+                }
             }
         } else if (seek_compaction) {
             level = current_->file_to_compact_level_;

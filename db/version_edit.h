@@ -13,6 +13,8 @@
 #include "mod/stats.h"
 #include "mod/learned_index.h"
 
+#include "mod/hal/Hal.h"
+
 using std::vector;
 
 namespace leveldb {
@@ -29,6 +31,11 @@ struct FileMetaData {
   InternalKey smallest;  // Smallest internal key served by table
   InternalKey largest;   // Largest internal key served by table
   int num_keys;
+
+  // hal
+  std::shared_ptr<hal::SSTHotStats> sstHotStats;
+
+  ~FileMetaData() {}
 };
 
 class VersionEdit {

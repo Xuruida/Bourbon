@@ -215,6 +215,16 @@ target_sources(leveldb
         "${PROJECT_SOURCE_DIR}/mod/CBMode_Learn.cpp"
         "${PROJECT_SOURCE_DIR}/mod/CBMode_Learn.h"
 
+    # HaL source files
+    "${PROJECT_SOURCE_DIR}/mod/hal/Hal.h"
+    "${PROJECT_SOURCE_DIR}/mod/hal/Hal.cc"
+    "${PROJECT_SOURCE_DIR}/mod/hal/CirQueue.h"
+    "${PROJECT_SOURCE_DIR}/mod/hal/EntryCache.h"
+    "${PROJECT_SOURCE_DIR}/mod/hal/EntryCache.cc"
+    "${PROJECT_SOURCE_DIR}/mod/hal/CacheInternal.h"
+    "${PROJECT_SOURCE_DIR}/mod/hal/CacheInternal.cc"
+    "${PROJECT_SOURCE_DIR}/mod/hal/util.h"
+
   # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
   $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>
     "${LEVELDB_PUBLIC_INCLUDE_DIR}/c.h"

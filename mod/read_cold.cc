@@ -15,6 +15,8 @@
 #include <cmath>
 #include <random>
 
+#include "mod/hal/Hal.h"
+
 using namespace leveldb;
 using namespace adgMod;
 using std::string;
@@ -129,7 +131,13 @@ int main(int argc, char *argv[]) {
             ("policy", "learn policy", cxxopts::value<int>(adgMod::policy)->default_value("0"))
             ("YCSB", "use YCSB trace", cxxopts::value<string>(ycsb_filename)->default_value(""))
             ("insert", "insert new value", cxxopts::value<int>(insert_bound)->default_value("0"))
-            ("output", "output key list", cxxopts::value<string>(output)->default_value("key_list.txt"));
+            ("output", "output key list", cxxopts::value<string>(output)->default_value("key_list.txt"))
+            
+            // HalParams
+            ("hal_mode", "Hot-aware learned index mode", cxxopts::value<uint32_t>(hal::mode)->default_value("0"));
+            ("hal_queue_size", "HaL queue size", cxxopts::value<size_t>(hal::default_queue_size)->default_value("256"));
+
+
     auto result = commandline_options.parse(argc, argv);
     if (result.count("help")) {
         printf("%s", commandline_options.help().c_str());
