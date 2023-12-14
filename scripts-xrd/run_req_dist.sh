@@ -61,7 +61,7 @@ if [[ "$1" == "1" ]] || [[ "$1" == "2" ]] || [[ "$1" == "3" ]] || [[ "$1" == "4"
 
         llsm_cmd="${execute_dir}/read_cold -f ${dataset_dir}/osm/osm-num${tmp_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum}-random -m 7 -u -n ${arg_n} -i 5 --change_level_load --insert ${insert_bound} --YCSB ${dist_dir}/ycsb_${workload}_ordered_run_${dist}_${linenum}_${opnum}_trace.txt"
         baseline_cmd="${execute_dir}/read_cold -f ${dataset_dir}/osm/osm-num${tmp_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum}-random -m 8 -u -n ${arg_n} -i 5 --change_level_load --insert ${insert_bound} --YCSB ${dist_dir}/ycsb_${workload}_ordered_run_${dist}_${linenum}_${opnum}_trace.txt"
-        hal_cmd="${execute_dir}/read_cold -f ${dataset_dir}/osm/osm-num${tmp_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum}-random -m 7 -u -n ${arg_n} -i 5 --change_level_load --insert ${insert_bound} --YCSB ${dist_dir}/ycsb_${workload}_ordered_run_${dist}_${linenum}_${opnum}_trace.txt --hal_mode 1"
+        hal_cmd="${execute_dir}/read_cold -f ${dataset_dir}/osm/osm-num${tmp_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum}-random -m 7 -u -n ${arg_n} -i 5 --change_level_load --insert ${insert_bound} --YCSB ${dist_dir}/ycsb_${workload}_ordered_run_${dist}_${linenum}_${opnum}_trace.txt --hal_mode 8"
         
         # ./read_cold -f ${dataset_dir}/osm/osm-num${linenum}-lat-nodup.txt -k 16 -v 64 -d ${database_dir}/testdb-osm${linenum}-random -m 7 -u -n 10000 -i 5 --change_level_load --distribution ${dist_dir}/ycsb_c_ordered_run_50m_10m_${dist}_trace.txt > ${eval_log_dir}/osm_llsm_${dist}.txt
         # ./read_cold -f ${dataset_dir}/osm/osm-num${linenum}-lat-nodup.txt -k 16 -v 64 -d ${database_dir}/testdb-osm${linenum}-random -m 7 -u -n 10000 -i 5 --change_level_load --distribution ${dist_dir}/ycsb_c_ordered_run_50m_10m_${dist}_trace.txt > ${eval_log_dir}/osm_llsm_${dist}.txt
@@ -97,9 +97,9 @@ if [[ "$1" == "1" ]] || [[ "$1" == "2" ]] || [[ "$1" == "3" ]] || [[ "$1" == "4"
 
 
         if [[ "$1" == "1" ]]; then
+            # sudo ${llsm_cmd} > ${eval_log_dir}/osm_llsm_${dist}.txt
             sudo ${llsm_cmd} > ${eval_log_dir}/osm_llsm_${dist}.txt
-            sudo ${llsm_cmd} > ${eval_log_dir}/osm_llsm_${dist}.txt
-            sudo ${hal_cmd} > ${eval_log_dir}/osm_hal_${dist}.txt
+            # sudo ${hal_cmd} > ${eval_log_dir}/osm_hal_${dist}.txt
             sudo ${hal_cmd} > ${eval_log_dir}/osm_hal_${dist}.txt
             sudo ${baseline_cmd} > ${eval_log_dir}/osm_baseline_${dist}.txt
         fi
@@ -118,13 +118,13 @@ if [[ "$1" == "1" ]] || [[ "$1" == "2" ]] || [[ "$1" == "3" ]] || [[ "$1" == "4"
             hal_prefix=osm-hal-num${linenum}-random-${dist}-perf
             if [[ "$1" == "2" ]]; then
 
-                echo "LLSM 1..."
-                sudo ${llsm_cmd} > ${eval_log_dir}/osm_llsm_${dist}.txt
+                # echo "LLSM 1..."
+                # sudo ${llsm_cmd} > ${eval_log_dir}/osm_llsm_${dist}.txt
                 echo "LLSM Perf..."
                 sudo perf record -e cycles -F 499 --call-graph dwarf,65528 -o ${eval_log_dir}/perf/${llsm_prefix}.data ${llsm_cmd} > ${eval_log_dir}/osm_llsm_${dist}.txt
 
-                echo "hal 1..."
-                sudo ${hal_cmd} > ${eval_log_dir}/osm_hal_${dist}.txt
+                # echo "hal 1..."
+                # sudo ${hal_cmd} > ${eval_log_dir}/osm_hal_${dist}.txt
                 echo "hal perf..."
                 sudo perf record -e cycles -F 499 --call-graph dwarf,65528 -o ${eval_log_dir}/perf/${hal_prefix}.data ${hal_cmd} > ${eval_log_dir}/osm_hal_${dist}.txt
 

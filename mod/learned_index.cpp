@@ -32,7 +32,7 @@ std::pair<uint64_t, uint64_t> LearnedIndexData::GetPosition(
   uint32_t left = 0, right = (uint32_t)string_segments.size() - 1;
   while (left != right - 1) {
     uint32_t mid = (right + left) / 2;
-    if (hal::mode & hal::HalModeMask::kHalEnabled) {
+    if (hal::mode & hal::HalModeMask::kHalModelPrefetchEnabled) {
       __builtin_prefetch(&string_segments[(left + mid) / 2]);
       __builtin_prefetch(&string_segments[(right + mid) / 2]);
     }

@@ -16,11 +16,15 @@ namespace hal {
     extern size_t kValueCacheThreshold;
     
     // 128M entry cache
-    extern int kEntryCacheSize;
+    extern size_t kEntryCacheSizeMB;
 
+    extern size_t kEntryCacheSize;
+
+
+    extern bool kEntryCacheDebugOutput;
     class EntryCache {
         public:
-            EntryCache(int size, DB *db, adgMod::VLog *vlog) : cache_(NewEntryLRUCache(size)), db_(db), vlog_(vlog) {
+            EntryCache(size_t size, DB *db, adgMod::VLog *vlog) : cache_(NewEntryLRUCache(size)), db_(db), vlog_(vlog) {
                 cache_->SetDBPerShard(db_);
             }
             ~EntryCache() {
@@ -48,6 +52,14 @@ namespace hal {
 
             inline bool TryInsert(const Slice &key, uint64_t vlog_addr, const Slice &new_value) {
                 return InsertInternal(key, vlog_addr, new_value, true, nullptr);
+            }
+
+            inline adgMod::VLog *Vlog() {
+                return vlog_;
+            }
+
+            inline EntryShardedLRUCache *Cache() {
+                return cache_;
             }
 
         private:

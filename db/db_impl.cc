@@ -1352,7 +1352,8 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
       *value = std::move(vlog->ReadRecord(value_address, value_size));
 
       if (hal::mode & hal::HalModeMask::kHalEntryCacheEnabled) {
-        entry_cache->Insert(key, value_address, value);
+        bool success = entry_cache->Insert(key, value_address, value);
+        assert(success == true);
       }
 #ifdef INTERNAL_TIMER
       instance->PauseTimer(12);

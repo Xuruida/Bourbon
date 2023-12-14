@@ -397,6 +397,9 @@ if(LEVELDB_BUILD_TESTS)
     leveldb_test("${PROJECT_SOURCE_DIR}/mod/read_cold.cc")
     leveldb_test("${PROJECT_SOURCE_DIR}/mod/gen_dbtrace.cpp")
 
+    # HaL Tests
+    leveldb_test("${PROJECT_SOURCE_DIR}/mod/hal/EntryCache_Test.cc") 
+
     # TODO(costan): This test also uses
     #               "${PROJECT_SOURCE_DIR}/util/env_{posix|windows}_test_helper.h"
     if (!WIN32)

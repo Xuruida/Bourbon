@@ -85,6 +85,16 @@ def read_file(filename):
     time = int(line.split(",")[0].split(":")[1])
     return time
 
+def read_file_x(filename, x):
+    lines = []
+    with open(filename, 'r') as f:
+        for line in f:
+            if line.startswith("Timer {} MEAN".format(x)):
+                lines.append(line)
+
+    line = lines[-1]
+    time = int(line.split(",")[0].split(":")[1])
+    return time
 
 def dataset():
     print("Dataset Distibution:\n")
@@ -122,6 +132,7 @@ def req_dist():
     distributions = ['zipfian']
     for dist in distributions:
         for dat in datasets:
+            print("======== Total average latency: =======")
             base = read_file(join(ROOT, "{}_baseline_{}.txt".format(dat, dist)))
             llsm = read_file(join(ROOT, "{}_llsm_{}.txt".format(dat, dist)))
             hal = read_file(join(ROOT, "{}_hal_{}.txt".format(dat, dist)))
@@ -130,6 +141,17 @@ def req_dist():
             print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
             print("baseline / llsm = {:.5f}".format(base / llsm))
             print("llsm / hal = {:.5f}".format(llsm / hal))
+
+            print("======== Get latency =======")
+            base = read_file_x(join(ROOT, "{}_baseline_{}.txt".format(dat, dist)), 4)
+            llsm = read_file_x(join(ROOT, "{}_llsm_{}.txt".format(dat, dist)), 4)
+            hal = read_file_x(join(ROOT, "{}_hal_{}.txt".format(dat, dist)), 4)
+            print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+            print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+            print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
+            print("baseline / llsm = {:.5f}".format(base / llsm))
+            print("llsm / hal = {:.5f}".format(llsm / hal))
+
             print("")
 
 

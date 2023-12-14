@@ -134,9 +134,11 @@ int main(int argc, char *argv[]) {
             ("output", "output key list", cxxopts::value<string>(output)->default_value("key_list.txt"))
             
             // HalParams
-            ("hal_mode", "Hot-aware learned index mode", cxxopts::value<uint32_t>(hal::mode)->default_value("0"));
-            ("hal_queue_size", "HaL queue size", cxxopts::value<size_t>(hal::default_queue_size)->default_value("256"));
+            ("hal_mode", "Hot-aware learned index mode", cxxopts::value<uint32_t>(hal::mode)->default_value("0"))
+            ("hal_queue_size", "HaL queue size", cxxopts::value<size_t>(hal::default_queue_size)->default_value("256"))
+            ("hal_cache_size", "Hal cache size (MB)", cxxopts::value<size_t>(hal::kEntryCacheSizeMB)->default_value("128"));
 
+    hal::kEntryCacheSize = hal::kEntryCacheSizeMB * 1024 * 1024;
 
     auto result = commandline_options.parse(argc, argv);
     if (result.count("help")) {

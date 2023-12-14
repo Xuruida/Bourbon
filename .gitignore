@@ -13,3 +13,9 @@ out/
 # Evaluations
 evaluation-xrd/
 evaluation/
+
+# figures
+# *.pdf
+# *.png
+# *.jpg
+#

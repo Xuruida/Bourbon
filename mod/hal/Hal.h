@@ -21,7 +21,8 @@ namespace hal {
         kHalEnabled = 1 << 0,
         kHalCompactionEnabled = 1 << 1,
         kHalLearnedScheduleEnabled = 1 << 2,
-        kHalEntryCacheEnabled = 1 << 3
+        kHalEntryCacheEnabled = 1 << 3,
+        kHalModelPrefetchEnabled = 1 << 4
     };
 
     extern uint32_t mode;

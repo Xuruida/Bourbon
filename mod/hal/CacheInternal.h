@@ -222,6 +222,10 @@ class EntryLRUCache {
   void SetDB(DB *db) {
     db_ = db;
   }
+
+  WriteBatch *GetWriteBatchPtr() {
+    return &wb_;
+  }
   
   void UsageChange(int delta);
 
@@ -313,6 +317,11 @@ class EntryShardedLRUCache {
   void UsageChange(const Slice& key, int delta) {
     const uint32_t hash = HashSlice(key);
     shard_[Shard(hash)].UsageChange(delta);
+  }
+
+  int GetShardWriteBatchSize(const Slice& key) {
+    const uint32_t hash = HashSlice(key);
+    return WriteBatchInternal::Count(shard_[Shard(hash)].GetWriteBatchPtr());
   }
 
   virtual uint64_t NewId() {
