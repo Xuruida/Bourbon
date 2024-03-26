@@ -40,6 +40,7 @@ EntryLRUCache::EntryLRUCache() : capacity_(0), usage_(0) {
   in_use_.next = &in_use_;
   in_use_.prev = &in_use_;
   wb_.Clear();
+  sync_wb_.Clear();
 }
 
 EntryLRUCache::~EntryLRUCache() {
@@ -49,7 +50,7 @@ EntryLRUCache::~EntryLRUCache() {
     assert(e->in_cache);
     e->in_cache = false;
     assert(e->refs == 1);  // Invariant of lru_ list.
-    Unref(e);
+    Unref(e, true);
     e = next;
   }
 }
@@ -67,7 +68,7 @@ void EntryLRUCache::Ref(EntryLRUHandle* e) {
   e->refs++;
 }
 
-void EntryLRUCache::Unref(EntryLRUHandle* e) {
+void EntryLRUCache::Unref(EntryLRUHandle* e, bool is_sync) {
   assert(e->refs > 0);
   e->refs--;
   if (e->refs == 0) {  // Deallocate.
@@ -79,13 +80,18 @@ void EntryLRUCache::Unref(EntryLRUHandle* e) {
       char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
       EncodeFixed64(buffer, e->value->vlog_addr);
       EncodeFixed32(buffer + sizeof(uint64_t), e->value->vlog_vsize);
-      wb_.Put(e->key(), (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
-
-      // Batch Put
-      if (WriteBatchInternal::Count(&wb_) >= BatchWriteThreshold) {
-        db_->Write(wo_, &wb_);
-        wb_.Clear();
+      if (is_sync) {
+        sync_wb_.Put(e->key(), (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
+        db_->Write(wo_, &sync_wb_);
+        sync_wb_.Clear();
+      } else {
+        wb_.Put(e->key(), (Slice) {buffer, sizeof(uint64_t) + sizeof(uint32_t)});
       }
+      // Batch Put
+      // if (WriteBatchInternal::Count(&wb_) >= BatchWriteThreshold) {
+      //   db_->Write(wo_, &wb_);
+      //   wb_.Clear();
+      // }
     }
     free(e->value);
 
@@ -121,7 +127,7 @@ Cache::Handle* EntryLRUCache::Lookup(const Slice& key, uint32_t hash) {
 
 void EntryLRUCache::Release(Cache::Handle* handle) {
   MutexLock l(&mutex_);
-  Unref(reinterpret_cast<EntryLRUHandle*>(handle));
+  Unref(reinterpret_cast<EntryLRUHandle*>(handle), true);
 }
 
 Cache::Handle* EntryLRUCache::Insert(const Slice& key, uint32_t hash, void* value,
@@ -146,39 +152,53 @@ Cache::Handle* EntryLRUCache::Insert(const Slice& key, uint32_t hash, void* valu
     e->in_cache = true;
     LRU_Append(&in_use_, e);
     usage_ += charge;
-    FinishErase(table_.Insert(e));
+    FinishErase(table_.Insert(e), true);
   } else {  // don't cache. (capacity_==0 is supported and turns off caching.)
     // next is read by key() in an assert, so it must be initialized
     e->next = nullptr;
   }
-  while (usage_ > capacity_ && lru_.next != &lru_) {
-    EntryLRUHandle* old = lru_.next;
-    assert(old->refs == 1);
-    bool erased = FinishErase(table_.Remove(old->key(), old->hash));
-    if (!erased) {  // to avoid unused variable when compiled NDEBUG
-      assert(erased);
-    }
-  }
+  
+  BatchEvict();
 
   return reinterpret_cast<Cache::Handle*>(e);
 }
 
+void EntryLRUCache::BatchEvict() {
+  assert(WriteBatchInternal::Count(&wb_) == 0);
+  int evict_cnt = 0;
+  if (usage_ < capacity_)
+    return;
+
+  while (evict_cnt < evictBatchSize && lru_.next != &lru_) {
+    EntryLRUHandle* old = lru_.next;
+    assert(old->refs == 1);
+    bool erased = FinishErase(table_.Remove(old->key(), old->hash), false);
+    if (!erased) {  // to avoid unused variable when compiled NDEBUG
+      assert(erased);
+    }
+    evict_cnt++;
+  }
+
+  db_->Write(wo_, &wb_);
+  wb_.Clear();
+}
+
 // If e != nullptr, finish removing *e from the cache; it has already been
 // removed from the hash table.  Return whether e != nullptr.
-bool EntryLRUCache::FinishErase(EntryLRUHandle* e) {
+bool EntryLRUCache::FinishErase(EntryLRUHandle* e, bool is_sync) {
   if (e != nullptr) {
     assert(e->in_cache);
     LRU_Remove(e);
     e->in_cache = false;
     usage_ -= e->charge;
-    Unref(e);
+    Unref(e, is_sync);
   }
   return e != nullptr;
 }
 
 void EntryLRUCache::Erase(const Slice& key, uint32_t hash) {
   MutexLock l(&mutex_);
-  FinishErase(table_.Remove(key, hash));
+  FinishErase(table_.Remove(key, hash), true);
 }
 
 void EntryLRUCache::Prune() {
@@ -186,10 +206,20 @@ void EntryLRUCache::Prune() {
   while (lru_.next != &lru_) {
     EntryLRUHandle* e = lru_.next;
     assert(e->refs == 1);
-    bool erased = FinishErase(table_.Remove(e->key(), e->hash));
+    bool erased = FinishErase(table_.Remove(e->key(), e->hash), false);
     if (!erased) {  // to avoid unused variable when compiled NDEBUG
       assert(erased);
     }
+
+    if (WriteBatchInternal::Count(&wb_) >= BatchWriteThreshold) {
+      db_->Write(wo_, &wb_);
+      wb_.Clear();
+    }
+  }
+
+  if (WriteBatchInternal::Count(&wb_) > 0) {
+    db_->Write(wo_, &wb_);
+    wb_.Clear();
   }
 }
 

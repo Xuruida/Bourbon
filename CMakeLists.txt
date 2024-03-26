@@ -32,6 +32,8 @@ option(INTERNAL_TIMER_SWITCH "Enable internal timer" OFF)
 option(PROFILER_SWITCH "Enable profiler" OFF)
 option(NDEBUG_SWITCH "disable assertion" OFF)
 
+option(ENTRY_CACHE_INTERNAL_SWITCH "Enable entry cache timer" OFF)
+
 if (LEVEL_SWITCH)
   add_definitions(-DRECORD_LEVEL_INFO)
 endif(LEVEL_SWITCH)
@@ -44,7 +46,9 @@ if (PROFILER_SWITCH)
   add_definitions(-DPROFILER)
 endif(PROFILER_SWITCH)
 
-
+if (ENTRY_CACHE_INTERNAL_SWITCH)
+  add_definitions(-DENTRY_CACHE_INTERNAL)
+endif(ENTRY_CACHE_INTERNAL_SWITCH)
 
 
 include(TestBigEndian)

@@ -78,6 +78,7 @@ def read_file(filename):
     lines = []
     with open(filename, 'r') as f:
         for line in f:
+            # print(line)
             if line.startswith("Timer 13 MEAN"):
                 lines.append(line)
 
@@ -95,6 +96,27 @@ def read_file_x(filename, x):
     line = lines[-1]
     time = int(line.split(",")[0].split(":")[1])
     return time
+
+def read_file_cache(filename):
+    l = ""
+    withVal = 0
+    withoutVal = 0
+    with open(filename, 'r') as f:
+        for line in f:
+            if line.startswith("EntryCacheAverageWithoutFirstItem:"):
+                l = line
+            if line.startswith("CacheHitVal:"):
+                withVal = int(line.split(" ")[1])
+            if line.startswith("CacheMissVal"):
+                withoutVal = int(line.split(" ")[1])
+    
+    if l != "":
+        times = l.split(" ")[1:]
+        times = [float(t) for t in times]
+        times.append(withVal)
+        times.append(withoutVal)
+        return times
+    return None
 
 def dataset():
     print("Dataset Distibution:\n")
@@ -123,36 +145,268 @@ def load_order():
         print("{} llsm random load latency: {:.2f} microseconds".format(d, rdm_llsm/LAT_FCTR))
         print("")
 
+def req_dist_workload(wl):
+    print(f"YCSB {wl}:")
+    # datasets = ['ar', 'osm']
+    # distributions = ['uniform', 'zipfian', 'sequential', 'hotspot', 'latest', 'exponential']
+    workloads = {
+        "A": "ycsb_r0.5_w0.5_ordered_run_zipfian",
+        "B": "ycsb_r0.95_w0.05_ordered_run_zipfian",
+        "C": "ycsb_r1_w0_ordered_run_zipfian",
+        "D": "ycsb_r0.95_w0_ordered_run_latest",
+        "F": "ycsb_r0.5_w0_ordered_run_zipfian",
+    }
+
+    wl = workloads[wl]
+
+    dat = 'osm'
+    base_path = join(ROOT, "overall", "{}_baseline_{}_30000000_10000000.txt".format(dat, wl))
+    llsm_path = join(ROOT, "overall", "{}_llsm_{}_30000000_10000000.txt".format(dat, wl))
+    hal_path = join(ROOT, "overall", "{}_hal_{}_30000000_10000000.txt".format(dat, wl))
+    co_path = join(ROOT, "overall", "{}_cache_only_{}_30000000_10000000.txt".format(dat, wl))
+
+    datasets = ['osm']
+    distributions = ['latest']
+
+    for dist in distributions:
+        for dat in datasets:
+            print("======== Total average latency: =======")
+            base = read_file(base_path)
+            llsm = read_file(llsm_path)
+            hal = read_file(hal_path)
+            co = read_file(co_path)
+            print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+            print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+            print("{} co under {} latency: {:.5f} microseconds".format(dat, dist, co/opnum/1000))
+            print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
+            print("baseline / llsm = {:.5f}".format(base / llsm))
+            print("baseline / co = {:.5f}".format(base / co))
+            print("baseline / hal = {:.5f}".format(base / hal))
+
+            print("======== Get latency =======")
+
+            base = read_file_x(base_path, 4)
+            llsm = read_file_x(llsm_path, 4)
+            hal = read_file_x(hal_path, 4)
+            co = read_file_x(co_path, 4)
+            
+            print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+            print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+            print("{} co under {} latency: {:.5f} microseconds".format(dat, dist, co/opnum/1000))
+            print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
+            print("baseline / llsm = {:.5f}".format(base / llsm))
+            print("baseline / co = {:.5f}".format(base / co))
+            print("baseline / hal = {:.5f}".format(base / hal))
+
+            # Cache stat.
+            print("======== HaL Hit Ratio =======")
+            hal = read_file_cache(hal_path)
+            print("    get hit ratio:", hal[0])
+            print("    put hit ratio:", hal[1])
+            print("    overall hit ratio:", hal[2])
+            print("    with val: ", hal[3])
+            print("    without val: ", hal[4])
+            print("")
+
+            hal_entry = read_file_x(hal_path, 17)
+            t = hal[3] + hal[4]
+            print("    EntryCache get latency: {:.5f} microseconds".format(hal_entry / t / 1000))
+
+            res = hal[0]
+            res2 = hal[3] / t
+            # hal_entry = read_file_x(hal_path, 18)
+            # if hal[1] > 0:
+            #     print("    EntryCache put latency: {:.5f} microseconds".format(hal_entry/opnum/1000/hal[1]))
+            print("")
+
+            print("======== Cache Only Hit Ratio =======")
+            co = read_file_cache(co_path)
+            print("    get hit ratio:", co[0])
+            print("    put hit ratio:", co[1])
+            print("    overall hit ratio:", co[2])
+            print("    with val: ", co[3])
+            print("    without val: ", co[4])
+            print("")
+
+            co_entry = read_file_x(co_path, 17)
+            t = co[3] + co[4]
+            print("    EntryCache get latency: {:.5f} microseconds".format(co_entry / t / 1000))
+            # co_entry = read_file_x(co_path, 18)
+            # if hal[1] > 0:
+            #     print("    EntryCache put latency: {:.5f} microseconds".format(co_entry/opnum/1000/hal[1]))
+            print("")
+    
+    return res, res2
+
+def prefix():
+
+    base_path = join(ROOT, "overall", "prefix_dist_baseline_30M_10M.txt")
+    llsm_path = join(ROOT, "overall", "prefix_dist_llsm_30M_10M.txt")
+    hal_path = join(ROOT, "overall", "prefix_dist_hal_30M_10M.txt")
+    co_path = join(ROOT, "overall", "prefix_dist_cache_only_30M_10M.txt")
+
+    dat = 'osm'
+    dist = 'prefix'
+    print("======== Total average latency: =======")
+    base = read_file(base_path)
+    llsm = read_file(llsm_path)
+    hal = read_file(hal_path)
+    co = read_file(co_path)
+    print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+    print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+    print("{} co under {} latency: {:.5f} microseconds".format(dat, dist, co/opnum/1000))
+    print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
+    print("baseline / llsm = {:.5f}".format(base / llsm))
+    print("baseline / co = {:.5f}".format(base / co))
+    print("baseline / hal = {:.5f}".format(base / hal))
+
+    print("======== Get latency =======")
+
+    base = read_file_x(base_path, 4)
+    llsm = read_file_x(llsm_path, 4)
+    hal = read_file_x(hal_path, 4)
+    co = read_file_x(co_path, 4)
+    
+    print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+    print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+    print("{} co under {} latency: {:.5f} microseconds".format(dat, dist, co/opnum/1000))
+    print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
+    print("baseline / llsm = {:.5f}".format(base / llsm))
+    print("baseline / co = {:.5f}".format(base / co))
+    print("baseline / hal = {:.5f}".format(base / hal))
+
+    # Cache stat.
+    print("======== HaL Hit Ratio =======")
+    hal = read_file_cache(hal_path)
+    print("    get hit ratio:", hal[0])
+    print("    put hit ratio:", hal[1])
+    print("    overall hit ratio:", hal[2])
+    print("    with val: ", hal[3])
+    print("    without val: ", hal[4])
+    print("")
+
+    hal_entry = read_file_x(hal_path, 17)
+    t = hal[3] + hal[4]
+    print("    EntryCache get latency: {:.5f} microseconds".format(hal_entry / t / 1000))
+
+    res = hal[0]
+    res2 = hal[3] / t
+    # hal_entry = read_file_x(hal_path, 18)
+    # if hal[1] > 0:
+    #     print("    EntryCache put latency: {:.5f} microseconds".format(hal_entry/opnum/1000/hal[1]))
+    print("")
+
+    print("======== Cache Only Hit Ratio =======")
+    co = read_file_cache(co_path)
+    print("    get hit ratio:", co[0])
+    print("    put hit ratio:", co[1])
+    print("    overall hit ratio:", co[2])
+    print("    with val: ", co[3])
+    print("    without val: ", co[4])
+    print("")
+
+    co_entry = read_file_x(co_path, 17)
+    t = co[3] + co[4]
+    print("    EntryCache get latency: {:.5f} microseconds".format(co_entry / t / 1000))
+    # co_entry = read_file_x(co_path, 18)
+    # if hal[1] > 0:
+    #     print("    EntryCache put latency: {:.5f} microseconds".format(co_entry/opnum/1000/hal[1]))
+    print("")
+
 
 def req_dist():
     print("Request Distribution:\n")
     # datasets = ['ar', 'osm']
     # distributions = ['uniform', 'zipfian', 'sequential', 'hotspot', 'latest', 'exponential']
     datasets = ['osm']
-    distributions = ['zipfian']
+    distributions = ['latest']
     for dist in distributions:
         for dat in datasets:
             print("======== Total average latency: =======")
             base = read_file(join(ROOT, "{}_baseline_{}.txt".format(dat, dist)))
             llsm = read_file(join(ROOT, "{}_llsm_{}.txt".format(dat, dist)))
             hal = read_file(join(ROOT, "{}_hal_{}.txt".format(dat, dist)))
+            co = read_file(join(ROOT, "{}_cache_only_{}.txt".format(dat, dist)))
             print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
             print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+            print("{} co under {} latency: {:.5f} microseconds".format(dat, dist, co/opnum/1000))
             print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
             print("baseline / llsm = {:.5f}".format(base / llsm))
-            print("llsm / hal = {:.5f}".format(llsm / hal))
+            print("baseline / co = {:.5f}".format(base / co))
+            print("baseline / hal = {:.5f}".format(base / hal))
 
             print("======== Get latency =======")
             base = read_file_x(join(ROOT, "{}_baseline_{}.txt".format(dat, dist)), 4)
             llsm = read_file_x(join(ROOT, "{}_llsm_{}.txt".format(dat, dist)), 4)
             hal = read_file_x(join(ROOT, "{}_hal_{}.txt".format(dat, dist)), 4)
+            co = read_file_x(join(ROOT, "{}_cache_only_{}.txt".format(dat, dist)), 4)
+            
             print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
             print("{} llsm under {} latency: {:.5f} microseconds".format(dat, dist, llsm/opnum/1000))
+            print("{} co under {} latency: {:.5f} microseconds".format(dat, dist, co/opnum/1000))
             print("{} hal under {} latency: {:.5f} microseconds".format(dat, dist, hal/opnum/1000))
             print("baseline / llsm = {:.5f}".format(base / llsm))
-            print("llsm / hal = {:.5f}".format(llsm / hal))
+            print("baseline / co = {:.5f}".format(base / co))
+            print("baseline / hal = {:.5f}".format(base / hal))
 
+            # Cache stat.
+            print("======== HaL Hit Ratio =======")
+            hal = read_file_cache(join(ROOT, "{}_hal_{}.txt".format(dat, dist)))
+            print("    get hit ratio:", hal[0])
+            print("    put hit ratio:", hal[1])
+            print("    overall hit ratio:", hal[2])
+            print("    with val: ", hal[3])
+            print("    without val: ", hal[4])
             print("")
+
+            print("======== Cache Only Hit Ratio =======")
+            co = read_file_cache(join(ROOT, "{}_cache_only_{}.txt".format(dat, dist)))
+            print("    get hit ratio:", co[0])
+            print("    put hit ratio:", co[1])
+            print("    overall hit ratio:", co[2])
+            print("    with val: ", co[3])
+            print("    without val: ", co[4])
+            print("")
+
+def cache_size_analyze():
+    print("Request Distribution:\n")
+    # datasets = ['ar', 'osm']
+    # distributions = ['uniform', 'zipfian', 'sequential', 'hotspot', 'latest', 'exponential']
+    datasets = ['osm']
+    distributions = ['zipfian']
+    cache_sizes = [32, 64, 128, 256, 512, 1024]
+    for dist in distributions:
+        for dat in datasets:
+            print("======== Total average latency: =======")
+            
+            base = read_file(join(ROOT, "{}_baseline_{}.txt".format(dat, dist)))
+            llsm = read_file(join(ROOT, "{}_llsm_{}.txt".format(dat, dist)))
+            print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+            print("{} llsm under {} latency: {:.5f} microseconds (Ratio: {:.4f})".format(dat, dist, llsm/opnum/1000, base / llsm))
+            
+            for sz in cache_sizes:
+                hal = read_file(join(ROOT, "{}_hal_{}_{}.txt".format(dat, dist, sz)))
+                print("{} hal {} MB under {} latency: {:.5f} microseconds (Ratio: {:.4f})".format(sz, dat, dist, hal/opnum/1000, base / hal))
+
+            print("======== Get latency =======")
+            base = read_file_x(join(ROOT, "{}_baseline_{}.txt".format(dat, dist)), 4)
+            llsm = read_file_x(join(ROOT, "{}_llsm_{}.txt".format(dat, dist)), 4)
+            print("{} baseline under {} latency: {:.5f} microseconds".format(dat, dist, base/opnum/1000))
+            print("{} llsm under {} latency: {:.5f} microseconds (Ratio: {:.4f})".format(dat, dist, llsm/opnum/1000, base / llsm))
+
+            for sz in cache_sizes:
+                hal = read_file_x(join(ROOT, "{}_hal_{}_{}.txt".format(dat, dist, sz)), 4)
+                print("{} hal {} MB under {} latency: {:.5f} microseconds (Ratio: {:.4f})".format(sz, dat, dist, hal/opnum/1000, base/hal))
+
+            
+            print("======== Hit Ratio =======")
+            for sz in cache_sizes:
+                hal = read_file_cache(join(ROOT, "{}_hal_{}_{}.txt".format(dat, dist, sz)))
+                print("cache size = {} MB:".format(sz))
+                print("    get hit ratio:", hal[0])
+                print("    put hit ratio:", hal[1])
+                print("    overall hit ratio:", hal[2])
+                print("")
 
 
 def ycsb():
@@ -201,6 +455,17 @@ def main():
         ycsb()
     elif expr == 5:
         sosd()
+    elif expr == 6:
+        cache_size_analyze()
+    elif expr == 7:
+        ratios = []
+        for w in ["A", "B", "C", "D", "F"]:
+            hitr = req_dist_workload(w)
+            ratios.append(hitr)
+        print(ratios)
+    elif expr == 8:
+        prefix()
+        
     print("")
 
 

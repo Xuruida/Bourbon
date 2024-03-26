@@ -7,8 +7,8 @@ using std::endl;
 // #define DENTRY_CACHE_DEBUG
 namespace hal {
 
-    size_t kValueCacheThreshold = 128;
-    size_t kEntryCacheSizeMB = 128;
+    size_t kValueCacheThreshold = 1024;
+    size_t kEntryCacheSizeMB = 256;
     size_t kEntryCacheSize = kEntryCacheSizeMB * 1024 * 1024;
     
     size_t GetAllocSize(size_t v) {
@@ -106,6 +106,7 @@ namespace hal {
 
         // case 2: has value
         if (item->item_size > 0) {
+            getCase2++;
             item->GetItem(value);
 #ifdef DENTRY_CACHE_DEBUG
             cout << "Lookup Case 2: key = " << key.ToString() << " found, value = " << "(" << item->item_size << "," << *value << ")" << endl << endl;
@@ -116,6 +117,7 @@ namespace hal {
 
         // case 3: from vlog / second insert
         *value = std::move(vlog_->ReadRecord(item->vlog_addr, item->vlog_vsize));
+        getCase3++;
 #ifdef DENTRY_CACHE_DEBUG
         cout << "Lookup Case 3: key = " << key.ToString() << " found, value = " << "(" << value->size() << "," << *value << ")" << endl << endl;
 #endif

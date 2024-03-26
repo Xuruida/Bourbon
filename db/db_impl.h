@@ -84,8 +84,17 @@ class DBImpl : public DB {
 
   // Hal
   hal::EntryCache *entry_cache;
+  uint64_t get_hit = 0;
+  uint64_t get_miss = 0;
+  uint64_t put_hit = 0;
+  uint64_t put_miss = 0;
 
-
+  void ResetCacheStats() {
+    get_hit = 0;
+    get_miss = 0;
+    put_hit = 0;
+    put_miss = 0;
+  }
 
 private:
   friend class DB;

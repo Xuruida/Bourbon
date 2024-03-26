@@ -44,9 +44,9 @@ namespace adgMod {
         timer.Start();
     }
 
-    std::pair<uint64_t, uint64_t> Stats::PauseTimer(uint32_t id, bool record) {
+    std::pair<uint64_t, uint64_t> Stats::PauseTimer(uint32_t id, bool record, bool abandon) {
         Timer& timer = timers[id];
-        return timer.Pause(record);
+        return timer.Pause(record, abandon);
     }
 
     void Stats::ResetTimer(uint32_t id) {

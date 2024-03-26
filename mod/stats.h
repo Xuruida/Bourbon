@@ -33,7 +33,7 @@ namespace adgMod {
 
         static Stats* GetInstance();
         void StartTimer(uint32_t id);
-        std::pair<uint64_t, uint64_t> PauseTimer(uint32_t id, bool record = false);
+        std::pair<uint64_t, uint64_t> PauseTimer(uint32_t id, bool record = false, bool abandon = false);
         void ResetTimer(uint32_t id);
         uint64_t ReportTime(uint32_t id);
         void ReportTime();

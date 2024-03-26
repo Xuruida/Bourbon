@@ -26,14 +26,14 @@ if [[ "$1" == "osm" ]]; then
     linenum=$(eval echo $(awk -F'=' '{ if($1~/^recordcount/) print $2}' ${datasetDir}/workloads/myWorkload.wl))
 
     trace_linenum=$linenum
-    echo "write osm ${linenum}"
-    ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum} -m 7 -w > ${eval_log_dir}/osm_${linenum}_put.txt
-    echo "finish write osm ${linenum}"
+    # echo "write osm ${linenum}"
+    # ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum} -m 7 -w > ${eval_log_dir}/osm_${linenum}_put.txt
+    # echo "finish write osm ${linenum}"
     echo "write osm ${linenum} random"
-    ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}.txt -k 16 -v 64 -d ${database_dir}/testdb-osm-${linenum}-random -m 7 -w -l 3 > ${eval_log_dir}/osm_${linenum}_random_put.txt
+    ./read_cold -f ${dataset_dir}/osm/osm-num${trace_linenum}.txt -k 16 -v 1024 -d ${database_dir}/testdb-osm-${linenum}-random -m 7 -w -l 3 > ${eval_log_dir}/osm_${linenum}_random_put.txt
     echo "finish write osm ${linenum} random"
 
-elif [[ "$1" == "ycsb" ]]; then
+elif [[ "$1" == "seq" ]]; then[22]	OpenStreetMap.[EB/OL]. https://www.openstreetmap.org/
     echo "ycsb"
 fi
 

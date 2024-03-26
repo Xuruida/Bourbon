@@ -4,6 +4,8 @@
 #ifndef HAL_ENTRY_CACHE_H_
 #define HAL_ENTRY_CACHE_H_
 
+#include <iostream>
+
 #include "mod/hal/CacheInternal.h"
 #include "mod/Vlog.h"
 #include "leveldb/slice.h"
@@ -25,8 +27,10 @@ namespace hal {
     class EntryCache {
         public:
             EntryCache(size_t size, DB *db, adgMod::VLog *vlog) : cache_(NewEntryLRUCache(size)), db_(db), vlog_(vlog) {
+                std::cout << "EntryCache size: " << size / 1024 / 1024 << "MB" << std::endl;
                 cache_->SetDBPerShard(db_);
             }
+
             ~EntryCache() {
                 delete cache_;
             }
@@ -67,6 +71,9 @@ namespace hal {
             EntryShardedLRUCache *cache_ = nullptr;
             DB *db_;
             adgMod::VLog *vlog_ = nullptr;
+        
+        public:
+            int getCase1 = 0, getCase2 = 0, getCase3 = 0;
     };
     
 };

@@ -19,8 +19,12 @@ namespace adgMod {
         started = true;
     }
 
-    std::pair<uint64_t, uint64_t> Timer::Pause(bool record) {
+    std::pair<uint64_t, uint64_t> Timer::Pause(bool record, bool abandon) {
         assert(started);
+        if (abandon) {
+            started = false;
+            return {0, 0};
+        }
         unsigned int dummy = 0;
         uint64_t time_elapse = __rdtscp(&dummy) - time_started;
         time_accumulated += time_elapse / reference_frequency;

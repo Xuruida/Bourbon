@@ -1293,11 +1293,25 @@ Status DBImpl::Get(const ReadOptions& options, const Slice& key,
   }
 
   if (hal::mode & hal::HalModeMask::kHalEntryCacheEnabled) {
+
+#ifdef ENTRY_CACHE_INTERNAL
+    instance->StartTimer(17);
+#endif
     bool found = entry_cache->Lookup(key, value);
     if (found) {
+      get_hit++;
+#ifdef ENTRY_CACHE_INTERNAL
+    instance->PauseTimer(17);
+#endif
       return s;
+    } else {
+      get_miss++;
+#ifdef ENTRY_CACHE_INTERNAL
+    instance->PauseTimer(17, false, true);
+#endif
     }
   }
+
 
   MemTable* mem = mem_;
   MemTable* imm = imm_;
@@ -1403,12 +1417,27 @@ void DBImpl::ReleaseSnapshot(const Snapshot* snapshot) {
 
 // Convenience methods
 Status DBImpl::Put(const WriteOptions& o, const Slice& key, const Slice& val) {
+  adgMod::Stats* instance = adgMod::Stats::GetInstance();
   if (adgMod::MOD >= 7) {
     uint64_t value_address = adgMod::db->vlog->AddRecord(key, val);
+
     if (hal::mode & hal::HalModeMask::kHalEntryCacheEnabled) {
+#ifdef ENTRY_CACHE_INTERNAL
+    instance->StartTimer(18);
+#endif
       bool success = entry_cache->TryInsert(key, value_address, val);
-      if (success)
+      if (success) {
+        put_hit++;
+#ifdef ENTRY_CACHE_INTERNAL
+    instance->PauseTimer(18);
+#endif
         return Status::OK();
+      } else {
+        put_miss++;
+#ifdef ENTRY_CACHE_INTERNAL
+    instance->PauseTimer(18, false, true);
+#endif
+      }
     }
     char buffer[sizeof(uint64_t) + sizeof(uint32_t)];
     EncodeFixed64(buffer, value_address);

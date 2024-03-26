@@ -136,15 +136,19 @@ int main(int argc, char *argv[]) {
             // HalParams
             ("hal_mode", "Hot-aware learned index mode", cxxopts::value<uint32_t>(hal::mode)->default_value("0"))
             ("hal_queue_size", "HaL queue size", cxxopts::value<size_t>(hal::default_queue_size)->default_value("256"))
-            ("hal_cache_size", "Hal cache size (MB)", cxxopts::value<size_t>(hal::kEntryCacheSizeMB)->default_value("128"));
-
-    hal::kEntryCacheSize = hal::kEntryCacheSizeMB * 1024 * 1024;
+            ("hal_cache_size", "Hal cache size (MB)", cxxopts::value<size_t>(hal::kEntryCacheSizeMB)->default_value("256"));
 
     auto result = commandline_options.parse(argc, argv);
+
     if (result.count("help")) {
         printf("%s", commandline_options.help().c_str());
         exit(0);
     }
+
+    cout << "hal::kEntryCacheSizeMB: " << hal::kEntryCacheSizeMB << endl;
+    hal::kEntryCacheSize = hal::kEntryCacheSizeMB * 1024 * 1024;
+    cout << "hal::kEntryCacheSize: " << hal::kEntryCacheSize << endl;
+    cout << "hal::mode: " << hal::mode << endl;
 
     std::default_random_engine e1(0), e2(255), e3(0);
     srand(0);
@@ -158,6 +162,8 @@ int main(int argc, char *argv[]) {
 
    // adgMod::file_learning_enabled = false;
 
+    // get_hit get_tot put_hit put_tot
+    vector<vector<uint64_t>> cache_stats;
 
     vector<string> keys;
     vector<uint64_t> distribution;
@@ -350,8 +356,16 @@ int main(int argc, char *argv[]) {
             string remove_command = "rm -rf " + db_location_mix;
             string copy_command = "cp -r " + db_location + " " + db_location_mix;
 
+            // flush vlog.txt
+            string flush_command = "echo '' > " + db_location_mix + "/vlog.txt";
+            rc = system(flush_command.c_str());
+            cout << "Finished " << flush_command << " with return code " << rc << endl;
+
             rc = system(remove_command.c_str());
+            cout << "Finished " << remove_command << " with return code " << rc << endl;
+            sleep(30);
             rc = system(copy_command.c_str());
+            cout << "Finished " << copy_command << " with return code " << rc << endl;
             db_location = db_location_mix;
         }
 
@@ -532,8 +546,15 @@ int main(int argc, char *argv[]) {
         }
 
         adgMod::learn_cb_model->Report();
+    
+        // HaL: Hit ratio
+        cache_stats.push_back({adgMod::db->get_hit, adgMod::db->get_hit + adgMod::db->get_miss, adgMod::db->put_hit, adgMod::db->put_hit + adgMod::db->put_miss});
+        auto &s_vec = cache_stats.back();
+        printf("EntryCache: %ld %ld %ld %ld\n", s_vec[0], s_vec[1], s_vec[2], s_vec[3]);
+        printf("EntryCacheRatio: %.4lf, %.4lf, %.4lf\n", 1.0 * s_vec[0] / s_vec[1], 1.0 * s_vec[2] / s_vec[3], 1.0 * (s_vec[0] + s_vec[2]) / (s_vec[1] + s_vec[3]));
 
-
+        printf("CacheHitVal: %d\n", adgMod::db->entry_cache->getCase2);
+        printf("CacheMissVal: %d\n", adgMod::db->entry_cache->getCase3);
         delete db;
     }
 
@@ -566,5 +587,31 @@ int main(int argc, char *argv[]) {
 
             printf("Timer %d MEAN: %lu, STDDEV: %f\n", s, (uint64_t) mean, stdev);
         }
+    }
+
+    {
+        uint64_t get_hit = 0, get_tot = 0, put_hit = 0, put_tot = 0;
+        for (int i = 0; i < cache_stats.size(); i++) {
+            // get_hit get_tot put_hit put_tot
+            get_hit += cache_stats[i][0];
+            get_tot += cache_stats[i][1];
+            put_hit += cache_stats[i][2];
+            put_tot += cache_stats[i][3];
+        }
+
+        printf("EntryCacheAverage: %lf %lf %lf\n", (double) get_hit / get_tot, (double) put_hit / put_tot, (double) (get_hit + put_hit) / (get_tot + put_tot));
+    }
+
+    if (num_iteration > 1) {
+        uint64_t get_hit = 0, get_tot = 0, put_hit = 0, put_tot = 0;
+        for (int i = 1; i < cache_stats.size(); i++) {
+            // get_hit get_tot put_hit put_tot
+            get_hit += cache_stats[i][0];
+            get_tot += cache_stats[i][1];
+            put_hit += cache_stats[i][2];
+            put_tot += cache_stats[i][3];
+        }
+
+        printf("EntryCacheAverageWithoutFirstItem: %lf %lf %lf\n", (double) get_hit / get_tot, (double) put_hit / put_tot, (double) (get_hit + put_hit) / (get_tot + put_tot));
     }
 }

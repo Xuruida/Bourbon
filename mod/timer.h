@@ -20,7 +20,7 @@ namespace adgMod {
 
     public:
         void Start();
-        std::pair<uint64_t, uint64_t> Pause(bool record = false);
+        std::pair<uint64_t, uint64_t> Pause(bool record = false, bool abandon = false);
         void Reset();
         uint64_t Time();
 

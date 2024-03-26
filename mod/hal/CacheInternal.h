@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 
 // #include "db/db_impl.h"
@@ -228,16 +229,20 @@ class EntryLRUCache {
   }
   
   void UsageChange(int delta);
+  int evictBatchSize = 10;
 
  private:
   void LRU_Remove(EntryLRUHandle* e);
   void LRU_Append(EntryLRUHandle* list, EntryLRUHandle* e);
   void Ref(EntryLRUHandle* e);
-  void Unref(EntryLRUHandle* e);
-  bool FinishErase(EntryLRUHandle* e) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  void Unref(EntryLRUHandle* e, bool is_sync);
+  bool FinishErase(EntryLRUHandle* e, bool is_sync) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
+  void BatchEvict();
 
   // Hal:
   WriteBatch wb_;
+  WriteBatch sync_wb_;
   DB *db_ = nullptr;
   WriteOptions wo_;
 
@@ -278,6 +283,7 @@ class EntryShardedLRUCache {
  public:
   explicit EntryShardedLRUCache(size_t capacity) : last_id_(0) {
     const size_t per_shard = (capacity + (kNumShards - 1)) / kNumShards;
+    std::cout << "EntryShardedLRUCache: Created EntryShardedLRUCache per_shard = " << per_shard << std::endl;
     for (int s = 0; s < kNumShards; s++) {
       shard_[s].SetCapacity(per_shard);
     }
